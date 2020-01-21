@@ -342,7 +342,7 @@ char **Custom::String::Split(char delimiter) const
         return nullptr;
     }
 
-    char **chunks = new char *[chunkCount];
+    char **chunks = new char *[chunkCount + 1];
 
     int prevIndex = 0;
     int delIndex;
@@ -351,10 +351,17 @@ char **Custom::String::Split(char delimiter) const
         // Get index of delimiter, starting from the prevIndex
         delIndex = IndexOf(delimiter, prevIndex);
 
-        // Chunk size is equal to difference + 1
-        int chunkSize = delIndex - prevIndex + 1;
+        int chunkSize;
+        if (delIndex > prevIndex)
+        {
+            chunkSize = delIndex - prevIndex;
+        }
+        else
+        {
+            chunkSize = curLen_ - prevIndex + 1;
+        }
 
-        char *chunk = new char[chunkSize];
+        char *chunk = new char[chunkSize + 1];
 
         // Copy string starting from prevIndex and ending at next delimiter
         for (int j = 0; j < chunkSize; j++)
@@ -363,7 +370,7 @@ char **Custom::String::Split(char delimiter) const
         }
 
         // Terminate the string
-        chunk[chunkSize - 1] = '\0';
+        chunk[chunkSize + 1] = '\0';
 
         // Update prevIndex to next delimiter index + 1
         prevIndex = delIndex + 1;
@@ -372,6 +379,7 @@ char **Custom::String::Split(char delimiter) const
         chunks[i] = chunk;
     }
 
+    chunks[chunkCount] = nullptr;
     return chunks;
 }
 
