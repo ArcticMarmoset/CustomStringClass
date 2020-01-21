@@ -281,8 +281,29 @@ Custom::String &Custom::String::PushBack(char c)
 
 char Custom::String::PopBack()
 {
+    // Cannot pop if string is empty
+    if (curLen_ == 0)
+    {
+        return '\0';
+    }
+
+    // If string_ is shared, create a new string and decrement refCount
+    if (string_[0] > 1)
+    {
+        char *newString = new char[curLen_ + CHAR_COUNT_OFFSET];
+        newString[0] = 1;
+        for (int i = 1; i < curLen_ + 1; i++)
+        {
+            newString[i] = string_[i];
+        }
+        string_[0]--;
+        string_ = newString;
+    }
+
+    // Set the char at curLen_ + 1 to null
     char c = string_[curLen_ + 1];
     string_[curLen_ + 1] = '\0';
+    curLen_--;
     return c;
 }
 
