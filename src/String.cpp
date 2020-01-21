@@ -97,9 +97,14 @@ int Custom::String::Length() const
     return curLen_;
 }
 
-const char *Custom::String::RawValue() const
+char *Custom::String::RawValue() const
 {
-    return string_;
+    char *string = new char[curLen_ + 1];
+    for (int i = 0; i < curLen_ + 1; i++)
+    {
+        string[i] = string_[i + 1];
+    }
+    return string;
 }
 
 bool Custom::String::IsEmpty() const
