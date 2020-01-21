@@ -45,7 +45,7 @@ namespace Custom
 
         String &operator=(const char str[]);
         String &operator=(const String &str);
-        bool operator==(const String &str);
+        bool operator==(const String &str) const;
 
     private:
         static int LengthOf(const char str[]);

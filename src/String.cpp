@@ -311,7 +311,7 @@ Custom::String &Custom::String::operator=(const Custom::String &str)
     return *this;
 }
 
-bool Custom::String::operator==(const Custom::String &str)
+bool Custom::String::operator==(const Custom::String &str) const
 {
     if (curLen_ != str.curLen_)
     {
