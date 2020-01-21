@@ -71,6 +71,11 @@ Custom::String::String(const Custom::String &str)
 
 int Custom::String::LengthOf(const char *str)
 {
+    if (!str)
+    {
+        return 0;
+    }
+
     char c = str[0];
 
     if (!c)
