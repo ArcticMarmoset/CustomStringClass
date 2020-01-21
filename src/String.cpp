@@ -414,6 +414,11 @@ Custom::String &Custom::String::operator=(const Custom::String &str)
 
 bool Custom::String::operator==(const Custom::String &str) const
 {
+    if (string_ == str.string_)
+    {
+        return true;
+    }
+
     if (curLen_ != str.curLen_)
     {
         return false;
