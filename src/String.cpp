@@ -237,9 +237,9 @@ Custom::String &Custom::String::PushBack(char c)
     // then just append the char and re-add the null char
     if (canFit && !isShared)
     {
-        curLen_++;
         string_[curLen_ + 1] = c;
         string_[curLen_ + 2] = '\0';
+        curLen_++;
         return *this;
     }
 
@@ -264,9 +264,9 @@ Custom::String &Custom::String::PushBack(char c)
     }
 
     // Add the char
-    curLen_++;
     newString[curLen_ + 1] = c;
     newString[curLen_ + 2] = '\0';
+    curLen_++;
 
     // If memory at string_ was shared, decrement refCount
     if (isShared)
