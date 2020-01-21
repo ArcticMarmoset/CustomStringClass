@@ -120,7 +120,7 @@ int Custom::String::IndexOf(const char c, int fromIndex) const
     }
 
     // Loop from fromIndex to curLen_ + CHAR_COUNT_OFFSET
-    for (int i = fromIndex; i < (curLen_ + CHAR_COUNT_OFFSET); i++)
+    for (int i = fromIndex + 1; i < (curLen_ + CHAR_COUNT_OFFSET); i++)
     {
         if (string_[i] == c)
         {
