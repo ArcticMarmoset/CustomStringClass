@@ -26,7 +26,7 @@ namespace Custom
 
         bool IsEmpty() const;
 
-        int IndexOf(char c) const;
+        int IndexOf(char c, int fromIndex = 1) const;
         int IndexOf(const char str[]) const;
         int IndexOf(const String &str) const;
 
@@ -41,7 +41,7 @@ namespace Custom
         String &Append(const char str[]);
         String &Append(const String &str);
 
-        String *Split(char c) const;
+        char **Split(char delimiter) const;
 
         String &operator=(const char str[]);
         String &operator=(const String &str);

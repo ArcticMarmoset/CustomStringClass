@@ -102,15 +102,15 @@ bool Custom::String::IsEmpty() const
     return curLen_ == 0;
 }
 
-int Custom::String::IndexOf(const char c) const
+int Custom::String::IndexOf(const char c, int fromIndex) const
 {
     if (curLen_ == 0)
     {
         return -1;
     }
 
-    // Loop from 1 to curLen_ + CHAR_COUNT_OFFSET
-    for (int i = 1; i < (curLen_ + CHAR_COUNT_OFFSET); i++)
+    // Loop from fromIndex to curLen_ + CHAR_COUNT_OFFSET
+    for (int i = fromIndex; i < (curLen_ + CHAR_COUNT_OFFSET); i++)
     {
         if (string_[i] == c)
         {
@@ -284,6 +284,64 @@ char Custom::String::PopBack()
 Custom::String &Custom::String::Append(char c)
 {
     return PushBack(c);
+}
+
+char **Custom::String::Split(char delimiter) const
+{
+    // Cannot split if string is empty
+    if (curLen_ == 0)
+    {
+        return nullptr;
+    }
+
+    // Calculate number of chunks
+    int chunkCount = 1;
+    for (int i = 1; i < curLen_ + 1; i++)
+    {
+        if (string_[i] == delimiter)
+        {
+            chunkCount++;
+        }
+    }
+
+    // Cannot split with no chunks
+    // ? Maybe return array of 1 string
+    if (chunkCount == 1)
+    {
+        return nullptr;
+    }
+
+    char **chunks = new char *[chunkCount];
+
+    int prevIndex = 0;
+    int delIndex;
+    for (int i = 0; i < chunkCount; i++)
+    {
+        // Get index of delimiter, starting from the prevIndex
+        delIndex = IndexOf(delimiter, prevIndex);
+
+        // Chunk size is equal to difference + 1
+        int chunkSize = delIndex - prevIndex + 1;
+
+        char *chunk = new char[chunkSize];
+
+        // Copy string starting from prevIndex and ending at next delimiter
+        for (int j = 0; j < chunkSize; j++)
+        {
+            chunk[j] = string_[1 + prevIndex + j];
+        }
+
+        // Terminate the string
+        chunk[chunkSize - 1] = '\0';
+
+        // Update prevIndex to next delimiter index + 1
+        prevIndex = delIndex + 1;
+
+        // Assign this chunk to the array
+        chunks[i] = chunk;
+    }
+
+    return chunks;
 }
 
 Custom::String &Custom::String::operator=(const char *str)
