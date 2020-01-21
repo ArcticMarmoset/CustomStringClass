@@ -13,7 +13,7 @@ Custom::String::String()
     string_ = new char[21];
     // Because string_[0] is reserved for the refCount
     string_[0] = 1;
-    // And we always need to terminate string_ with the null char
+    // And we need to terminate string_ with the null char
     string_[1] = '\0';
 }
 
@@ -23,7 +23,11 @@ Custom::String::~String()
     if (string_[0] == 1)
     {
         delete [] string_;
+        return;
     }
+
+    // Otherwise, decrement refCount
+    string_[0]--;
 }
 
 Custom::String::String(const char *str) : String()
@@ -119,7 +123,7 @@ int Custom::String::IndexOf(const char c, int fromIndex) const
         return -1;
     }
 
-    // Loop from fromIndex to curLen_ + CHAR_COUNT_OFFSET
+    // Loop from fromIndex with refCount offset to curLen_ + CHAR_COUNT_OFFSET
     for (int i = fromIndex + 1; i < (curLen_ + CHAR_COUNT_OFFSET); i++)
     {
         if (string_[i] == c)
