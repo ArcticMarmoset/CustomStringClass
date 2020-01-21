@@ -97,7 +97,7 @@ int Custom::String::Length() const
     return curLen_;
 }
 
-char *Custom::String::RawValue() const
+char *Custom::String::ToCharArray() const
 {
     char *string = new char[curLen_ + 1];
     for (int i = 0; i < curLen_ + 1; i++)

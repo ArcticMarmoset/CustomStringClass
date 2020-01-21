@@ -22,7 +22,7 @@ namespace Custom
         String(const String &str);
 
         int Length() const;
-        char *RawValue() const;
+        char *ToCharArray() const;
 
         bool IsEmpty() const;
 
