@@ -14,3 +14,4 @@ Currently working:
 - Split by delimiter
 - Assignment operator
 - Equivalence operator
+- Reference count tracking
