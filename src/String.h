@@ -10,9 +10,10 @@ namespace Custom
     class String
     {
     private:
-        int curLen_; // Excludes null char and refCount
-        int maxLen_; // Excludes null char and refCount
+        int curLen_;
+        int maxLen_;
         char *string_;
+        int *refCount_;
 
     public:
         String();
@@ -26,7 +27,7 @@ namespace Custom
 
         bool IsEmpty() const;
 
-        int IndexOf(char c, int fromIndex = 1) const;
+        int IndexOf(char c, int fromIndex = 0) const;
         int IndexOf(const char str[]) const;
         int IndexOf(const String &str) const;
 
@@ -49,7 +50,6 @@ namespace Custom
 
     private:
         static int LengthOf(const char str[]);
-        static constexpr int CHAR_COUNT_OFFSET = 2;
     };
 }
 

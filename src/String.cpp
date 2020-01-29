@@ -6,28 +6,29 @@
 
 Custom::String::String()
 {
-    curLen_ = 0;
-    // Initial max length of 19
+    // String should always have at least the null char
+    curLen_ = 1;
+    // Initial max length of 19 with null char
     maxLen_ = 19;
-    // Allocate char array of size 19 + CHAR_COUNT_OFFSET
-    string_ = new char[21];
-    // Because string_[0] is reserved for the refCount
-    string_[0] = 1;
-    // And we need to terminate string_ with the null char
-    string_[1] = '\0';
+    // Allocate char array of size 19
+    string_ = new char[maxLen_];
+    // Terminate string_ with the null char
+    string_[0] = '\0';
+    // Initialise refCount_
+    refCount_ = new int(0);
 }
 
 Custom::String::~String()
 {
-    // Check for refCount of 1 because 0 is the null char
-    if (string_[0] == 1)
+    if (*refCount_ == 0)
     {
         delete [] string_;
+        delete refCount_;
         return;
     }
 
     // Otherwise, decrement refCount
-    string_[0]--;
+    (*refCount_)--;
 }
 
 Custom::String::String(const char *str) : String()
@@ -44,21 +45,21 @@ Custom::String::String(const char *str) : String()
     // If arrayLength exceeds 19, we need a new array
     if (arrayLength > maxLen_)
     {
-        // Update maxLen_ with buffer
+        // Update maxLen_ with arbitrary buffer
         maxLen_ += arrayLength;
         // Free the old one
         delete [] string_;
         // Allocate the new one
-        string_ = new char[maxLen_ + CHAR_COUNT_OFFSET];
+        string_ = new char[maxLen_];
     }
 
     // Update curLen_
-    curLen_ = arrayLength - 1;
+    curLen_ = arrayLength;
 
-    // Copy over chars from str with string_ index offset by 1
-    for (int i = 0; i < curLen_ + 1; i++)
+    // Copy over chars from str
+    for (int i = 0; i < curLen_; i++)
     {
-        string_[i + 1] = str[i];
+        string_[i] = str[i];
     }
 }
 
@@ -66,11 +67,13 @@ Custom::String::String(const Custom::String &str)
 {
     // Copy constructor so point string_ to same memory
     string_ = str.string_;
+    // Point refCount_ to same memory
+    refCount_ = str.refCount_;
     // Update lengths
     curLen_ = str.curLen_;
     maxLen_ = str.maxLen_;
     // And increment refCount
-    string_[0]++;
+    (*refCount_)++;
 }
 
 int Custom::String::LengthOf(const char *str)
@@ -98,37 +101,37 @@ int Custom::String::LengthOf(const char *str)
 
 int Custom::String::Length() const
 {
-    return curLen_;
+    return curLen_ - 1;
 }
 
 char *Custom::String::ToCharArray() const
 {
-    char *string = new char[curLen_ + 1];
-    for (int i = 0; i < curLen_ + 1; i++)
+    char *string = new char[curLen_];
+    for (int i = 0; i < curLen_; i++)
     {
-        string[i] = string_[i + 1];
+        string[i] = string_[i];
     }
     return string;
 }
 
 bool Custom::String::IsEmpty() const
 {
-    return curLen_ == 0;
+    return curLen_ == 1;
 }
 
 int Custom::String::IndexOf(const char c, int fromIndex) const
 {
-    if (curLen_ == 0)
+    if (curLen_ == 1)
     {
         return -1;
     }
 
-    // Loop from fromIndex with refCount offset to curLen_ + CHAR_COUNT_OFFSET
-    for (int i = fromIndex + 1; i < (curLen_ + CHAR_COUNT_OFFSET); i++)
+    // Loop from fromIndex to curLen_
+    for (int i = fromIndex; i < curLen_; i++)
     {
         if (string_[i] == c)
         {
-            return i - 1;
+            return i;
         }
     }
     return -1;
@@ -138,13 +141,12 @@ int Custom::String::IndexOf(const char *str) const
 {
     int strLength = String::LengthOf(str);
 
-    if (curLen_ == 0 || strLength == 0)
+    if (curLen_ == 1 || strLength == 0)
     {
         return -1;
     }
 
-    // Offset by 1 not 2 because there is no need to compare null character
-    for (int i = 1; i < curLen_ + 1; i++)
+    for (int i = 0; i < curLen_; i++)
     {
         // Look for a first-char match
         if (string_[i] != str[0])
@@ -158,8 +160,10 @@ int Custom::String::IndexOf(const char *str) const
             // If we are already at strLength, all chars have matched
             if (j == strLength)
             {
+                // Increment i to match j
+                i++;
                 // Return the index of the first char
-                return i - 1;
+                return i - j;
             }
 
             // Otherwise, get the next char
@@ -179,42 +183,7 @@ int Custom::String::IndexOf(const char *str) const
 
 int Custom::String::IndexOf(const Custom::String &str) const
 {
-    if (curLen_ == 0 || str.curLen_ == 0)
-    {
-        return -1;
-    }
-
-    int strLength = str.curLen_ + 1;
-    for (int i = 1; i < curLen_ + 1; i++)
-    {
-        // Look for a first-char match
-        if (string_[i] != str.string_[1])
-        {
-            continue;
-        }
-
-        // There was a match so compare the rest
-        for (int j = 2; j <= strLength; j++)
-        {
-            // If we are already at strLength, all chars have matched
-            if (j == strLength)
-            {
-                return i - 1;
-            }
-
-            // Otherwise, get the next char
-            i++;
-
-            // If this pair does not match, look for the next first-char match
-            if (string_[i] != str.string_[j])
-            {
-                break;
-            }
-        }
-    }
-
-    // A match was not found
-    return -1;
+    return IndexOf(str.string_);
 }
 
 bool Custom::String::Contains(const char c) const
@@ -235,14 +204,14 @@ bool Custom::String::Contains(const Custom::String &str) const
 Custom::String &Custom::String::PushBack(char c)
 {
     bool canFit = curLen_ + 1 <= maxLen_;
-    bool isShared = string_[0] > 1;
+    bool isShared = *refCount_ > 0;
 
     // If we can fit 1 more char, and the memory at string_ is not shared,
     // then just append the char and re-add the null char
     if (canFit && !isShared)
     {
-        string_[curLen_ + 1] = c;
-        string_[curLen_ + 2] = '\0';
+        string_[curLen_ - 1] = c;
+        string_[curLen_] = '\0';
         curLen_++;
         return *this;
     }
@@ -256,26 +225,26 @@ Custom::String &Custom::String::PushBack(char c)
     }
 
     // Dynamically allocate the new array
-    char *newString = new char[maxLen_ + CHAR_COUNT_OFFSET];
-
-    // Initialise refCount to 1
-    newString[0] = 1;
+    char *newString = new char[maxLen_];
 
     // Copy current string into newString
-    for (int i = 1; i < curLen_ + 1; i++)
+    for (int i = 0; i < curLen_; i++)
     {
         newString[i] = string_[i];
     }
 
     // Add the char
-    newString[curLen_ + 1] = c;
-    newString[curLen_ + 2] = '\0';
+    newString[curLen_ - 1] = c;
+    newString[curLen_] = '\0';
+
+    // Increment curLen_
     curLen_++;
 
-    // If memory at string_ was shared, decrement refCount
+    // If memory at string_ was shared, decrement refCount_ and start anew
     if (isShared)
     {
-        string_[0]--;
+        (*refCount_)--;
+        refCount_ = new int(0);
     }
     // Otherwise, free memory at string_
     else
@@ -291,27 +260,27 @@ Custom::String &Custom::String::PushBack(char c)
 char Custom::String::PopBack()
 {
     // Cannot pop if string is empty
-    if (curLen_ == 0)
+    if (curLen_ == 1)
     {
         return '\0';
     }
 
-    // If string_ is shared, create a new string and decrement refCount
-    if (string_[0] > 1)
+    // If string_ is shared, create a new string, decrement refCount_
+    if (*refCount_ > 0)
     {
-        char *newString = new char[curLen_ + CHAR_COUNT_OFFSET];
-        newString[0] = 1;
-        for (int i = 1; i < curLen_ + 1; i++)
+        char *newString = new char[maxLen_];
+        for (int i = 0; i < curLen_; i++)
         {
             newString[i] = string_[i];
         }
-        string_[0]--;
+        (*refCount_)--;
+        refCount_ = new int(0);
         string_ = newString;
     }
 
-    // Set the char at curLen_ + 1 to null
-    char c = string_[curLen_ + 1];
-    string_[curLen_ + 1] = '\0';
+    // Set the char at curLen_ - 1 to null
+    char c = string_[curLen_ - 1];
+    string_[curLen_ - 1] = '\0';
     curLen_--;
     return c;
 }
@@ -324,14 +293,14 @@ Custom::String &Custom::String::Append(char c)
 char **Custom::String::Split(char delimiter) const
 {
     // Cannot split if string is empty
-    if (curLen_ == 0)
+    if (curLen_ == 1)
     {
         return nullptr;
     }
 
     // Calculate number of chunks
     int chunkCount = 1;
-    for (int i = 1; i < curLen_ + 1; i++)
+    for (int i = 0; i < curLen_; i++)
     {
         if (string_[i] == delimiter)
         {
@@ -362,7 +331,7 @@ char **Custom::String::Split(char delimiter) const
         }
         else
         {
-            chunkSize = curLen_ - prevIndex + 1;
+            chunkSize = curLen_ - prevIndex - 1;
         }
 
         char *chunk = new char[chunkSize + 1];
@@ -370,11 +339,11 @@ char **Custom::String::Split(char delimiter) const
         // Copy string starting from prevIndex and ending at next delimiter
         for (int j = 0; j < chunkSize; j++)
         {
-            chunk[j] = string_[1 + prevIndex + j];
+            chunk[j] = string_[prevIndex + j];
         }
 
         // Terminate the string
-        chunk[chunkSize + 1] = '\0';
+        chunk[chunkSize] = '\0';
 
         // Update prevIndex to next delimiter index + 1
         prevIndex = delIndex + 1;
@@ -400,15 +369,16 @@ Custom::String &Custom::String::operator=(const Custom::String &str)
         return *this;
     }
 
-    if (string_[0] == 1)
+    if (*refCount_ == 0)
     {
         delete [] string_;
     }
 
-    str.string_[0]++;
+    refCount_ = str.refCount_;
     string_ = str.string_;
     curLen_ = str.curLen_;
     maxLen_ = str.maxLen_;
+    (*refCount_)++;
     return *this;
 }
 
@@ -424,7 +394,7 @@ bool Custom::String::operator==(const Custom::String &str) const
         return false;
     }
 
-    for (int i = 1; i < curLen_ + 1; i++)
+    for (int i = 0; i < curLen_; i++)
     {
         if (string_[i] != str.string_[i])
         {
