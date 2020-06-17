@@ -124,7 +124,7 @@ namespace Custom
 
         if (charCount_ == 1)
         {
-            return -1;
+            return npos;
         }
 
         for (size_t i = fromIndex; i < charCount_; i++)
@@ -134,7 +134,7 @@ namespace Custom
                 return i;
             }
         }
-        return -1;
+        return npos;
     }
 
     size_t String::IndexOf(const char *str) const
@@ -145,7 +145,7 @@ namespace Custom
 
         if (strLength == 0 || IsEmpty())
         {
-            return -1;
+            return npos;
         }
 
         for (size_t i = 0; i < charCount_; i++)
@@ -180,7 +180,7 @@ namespace Custom
         }
 
         // A match was not found
-        return -1;
+        return npos;
     }
 
     size_t String::IndexOf(const String &str) const
