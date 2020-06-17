@@ -1,6 +1,6 @@
 # Custom String Class
 
-An implementation of a string class in C++ from scratch.
+An implementation of a string class in C++ from scratch. Nothing from the standard library was used.
 
 Currently working:
 - Constructor
@@ -14,3 +14,4 @@ Currently working:
 - Split by delimiter
 - Assignment operator
 - Equivalence operator
+- Reference count tracking
