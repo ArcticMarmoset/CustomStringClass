@@ -1,17 +1,24 @@
 # Custom String Class
 
-An implementation of a string class in C++ from scratch. Nothing from the standard library was used.
+An implementation of a string class to learn modern C++ concepts. Key features include application of the copy-and-swap idiom, and reference counting.
 
 Currently working:
 - Constructor
 - Constructor from C-style string
 - Copy constructor
-- IndexOf (character, C-style string)
-- Contains (character, C-style string)
-- PushBack (character)
+- Constuctor from rvalue reference
+- IndexOf
+  - char
+  - C-style string
+- Contains
+  - char
+  - C-style string
+- PushBack
+  - char
 - PopBack
-- Append (character)
+  - char
 - Split by delimiter
 - Assignment operator
 - Equivalence operator
-- Reference count tracking
+
+Many functions have not been fully tested and are work-in-progress.
