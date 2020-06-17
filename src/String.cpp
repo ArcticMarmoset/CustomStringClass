@@ -4,136 +4,132 @@
 
 #include "custom/String.h"
 
+#include "DebugAssert.h"
+
+#include <cstring>
+#include <algorithm>
+
+using std::size_t;
+
 namespace Custom
 {
 
+    void swap(String &first, String &second) noexcept
+    {
+        using std::swap;
+
+        swap(first.buffer_, second.buffer_);
+        swap(first.active_, second.active_);
+        swap(first.capacity_, second.capacity_);
+        swap(first.charCount_, second.charCount_);
+    }
 
     String::String()
+        : active_(buffer_.heap)
+        , capacity_(0)
+        , charCount_(1)
     {
-        // String should always have at least the null char
-        curLen_ = 1;
-        // Initial max length of 19 with null char
-        maxLen_ = 19;
-        // Allocate char array of size 19
-        string_ = new char[maxLen_];
-        // Terminate string_ with the null char
-        string_[0] = '\0';
-        // Initialise refCount_
-        refCount_ = new int(0);
     }
 
-    String::~String()
+    String::String(const String &other)
+        : capacity_(other.capacity_)
+        , charCount_(other.charCount_)
     {
-        if (*refCount_ == 0)
+        if (capacity_ == 0) // other is stored locally
         {
-            delete[] string_;
-            delete refCount_;
+            active_         = buffer_.local;
+            const char *str = other.buffer_.local;
+            strncpy(buffer_.local, str, charCount_);
             return;
         }
 
-        // Otherwise, decrement refCount
-        (*refCount_)--;
+        active_          = buffer_.heap;
+        buffer_.heap     = other.buffer_.heap;
+        buffer_.refCount = other.buffer_.refCount;
+
+        ++*buffer_.refCount;
     }
 
-    String::String(const char *str) : String()
+    String::String(String &&other) noexcept
     {
-        // arrayLength is the number of chars plus the null char
-        int arrayLength = String::LengthOf(str) + 1;
+        // No point initialising member variables
+        swap(*this, other);
+        // Let destructor take care of other
+    }
 
-        // If arrayLength is 1, then str is empty
-        if (arrayLength == 1)
+    String::String(const char *str)
+        : capacity_(0)
+        , charCount_(strlen(str) + 1)
+    {
+        // Drop null char if just 1 over smax
+        if (charCount_ - 1 <= smax) // can store locally
         {
+            active_      = buffer_.local;
+            size_t count = (charCount_ < smax) ? charCount_ : smax;
+            strncpy(active_, str, count);
             return;
         }
 
-        // If arrayLength exceeds 19, we need a new array
-        if (arrayLength > maxLen_)
+        active_ = buffer_.heap;
+        // Arbitrary capacity
+        capacity_        = charCount_ + smax;
+        buffer_.heap     = new char[capacity_];
+        buffer_.refCount = new size_t(1);
+        strncpy(active_, str, charCount_);
+    }
+
+    size_t String::Length() const
+    {
+        return charCount_ - 1;
+    }
+
+    const char *String::Value() const
+    {
+        if (IsEmpty() || capacity_ != 0)
         {
-            // Update maxLen_ with arbitrary buffer
-            maxLen_ += arrayLength;
-            // Free the old one
-            delete[] string_;
-            // Allocate the new one
-            string_ = new char[maxLen_];
+            return buffer_.heap;
         }
-
-        // Update curLen_
-        curLen_ = arrayLength;
-
-        // Copy over chars from str
-        for (int i = 0; i < curLen_; i++)
+        else
         {
-            string_[i] = str[i];
+            return buffer_.local;
         }
     }
 
-    String::String(const String &str)
+    void String::ToCharArray(const char *out)
     {
-        // Copy constructor so point string_ to same memory
-        string_ = str.string_;
-        // Point refCount_ to same memory
-        refCount_ = str.refCount_;
-        // Update lengths
-        curLen_ = str.curLen_;
-        maxLen_ = str.maxLen_;
-        // And increment refCount
-        (*refCount_)++;
-    }
-
-    int String::LengthOf(const char *str)
-    {
-        if (!str)
+        if (IsEmpty() || capacity_ != 0)
         {
-            return 0;
+            out = buffer_.heap;
+            return;
         }
 
-        char c = str[0];
-
-        if (!c)
+        if (buffer_.local[charCount_ - 1] != '\0') // then need to append null
         {
-            return 0;
+            Append('\0');
+            ToCharArray(out);
+            return;
         }
 
-        int i = 1;
-        while ((c = str[i]))
-        {
-            i++;
-        }
-
-        return i;
-    }
-
-    int String::Length() const
-    {
-        return curLen_ - 1;
-    }
-
-    char *String::ToCharArray() const
-    {
-        char *string = new char[curLen_];
-        for (int i = 0; i < curLen_; i++)
-        {
-            string[i] = string_[i];
-        }
-        return string;
+        out = buffer_.local;
     }
 
     bool String::IsEmpty() const
     {
-        return curLen_ == 1;
+        return charCount_ == 1;
     }
 
-    int String::IndexOf(const char c, int fromIndex) const
+    size_t String::IndexOf(const char c, int fromIndex) const
     {
-        if (curLen_ == 1)
+        // TODO: Use pointer arithmetic?
+
+        if (charCount_ == 1)
         {
             return -1;
         }
 
-        // Loop from fromIndex to curLen_
-        for (int i = fromIndex; i < curLen_; i++)
+        for (size_t i = fromIndex; i < charCount_; i++)
         {
-            if (string_[i] == c)
+            if (active_[i] == c)
             {
                 return i;
             }
@@ -141,25 +137,27 @@ namespace Custom
         return -1;
     }
 
-    int String::IndexOf(const char *str) const
+    size_t String::IndexOf(const char *str) const
     {
-        int strLength = String::LengthOf(str);
+        // TODO: Use pointer arithmetic?
 
-        if (curLen_ == 1 || strLength == 0)
+        size_t strLength = strlen(str);
+
+        if (strLength == 0 || IsEmpty())
         {
             return -1;
         }
 
-        for (int i = 0; i < curLen_; i++)
+        for (size_t i = 0; i < charCount_; i++)
         {
             // Look for a first-char match
-            if (string_[i] != str[0])
+            if (active_[i] != str[0])
             {
                 continue;
             }
 
             // There was a match so compare the rest
-            for (int j = 1; j <= strLength; j++)
+            for (size_t j = 1; j <= strLength; j++)
             {
                 // If we are already at strLength, all chars have matched
                 if (j == strLength)
@@ -174,7 +172,7 @@ namespace Custom
                 i++;
 
                 // If this pair does not match, look for the next first-char match
-                if (string_[i] != str[j])
+                if (active_[i] != str[j])
                 {
                     break;
                 }
@@ -185,9 +183,9 @@ namespace Custom
         return -1;
     }
 
-    int String::IndexOf(const String &str) const
+    size_t String::IndexOf(const String &str) const
     {
-        return IndexOf(str.string_);
+        return IndexOf(str.Value());
     }
 
     bool String::Contains(const char c) const
@@ -207,85 +205,77 @@ namespace Custom
 
     String &String::PushBack(char c)
     {
-        bool canFit = curLen_ + 1 <= maxLen_;
-        bool isShared = *refCount_ > 0;
+        // TODO: Rework
 
-        // If we can fit 1 more char, and the memory at string_ is not shared,
-        // then just append the char and re-add the null char
+        size_t cap = (smax > capacity_) ? smax : capacity_;
+        bool canFit = charCount_ + 1 <= cap;
+
+        // * Not shared if and only if capacity <= 0 and ref count <= 0
+        // * Both < 0 is never true, since values are unsigned
+        // Therefore: not shared if and only if both == 0
+        // * Both == 0 if and only if capacity OR ref count == 0
+        // Therefore: shared if and only if (capacity OR ref count) > 0
+        bool isShared = (capacity_ | *buffer_.refCount) > 0;
+
+        // If we can fit 1 more char, and string is local, 
+        // just append the char and re-add the null char
         if (canFit && !isShared)
         {
-            string_[curLen_ - 1] = c;
-            string_[curLen_] = '\0';
-            curLen_++;
+            active_[charCount_ - 1] = c;
+            active_[charCount_] = '\0';
+            charCount_++;
             return *this;
         }
 
-        // In all other cases, we need to dynamically allocate a new array
+        // Remaining cases:
+        // Local string and cannot fit
+        // Shared heap string and cannot fit
+        // Unique heap string and cannot fit
+        // Shared heap string and can fit
 
-        // But the size of it must first be determined
-        if (!canFit)
+        active_ = buffer_.heap;
+
+        if (!canFit) // increase size
         {
-            maxLen_ = maxLen_ * 2;
+            capacity_ = 2 * capacity_;
         }
 
-        // Dynamically allocate the new array
-        char *newString = new char[maxLen_];
+        char *newString = new char[capacity_];
 
-        // Copy current string into newString
-        for (int i = 0; i < curLen_; i++)
+        // Drop null char since it will be overwritten
+        strncpy(newString, active_, Length());
+
+        // Append
+        newString[charCount_ - 1] = c;
+        newString[charCount_] = '\0';
+        charCount_++;
+
+        if (isShared) // decrement ref count and start anew
         {
-            newString[i] = string_[i];
+            --*buffer_.refCount;
+            buffer_.refCount = new size_t(1);
+        }
+        else // free heap allocation
+        {
+            delete[] buffer_.heap;
         }
 
-        // Add the char
-        newString[curLen_ - 1] = c;
-        newString[curLen_] = '\0';
-
-        // Increment curLen_
-        curLen_++;
-
-        // If memory at string_ was shared, decrement refCount_ and start anew
-        if (isShared)
-        {
-            (*refCount_)--;
-            refCount_ = new int(0);
-        }
-        // Otherwise, free memory at string_
-        else
-        {
-            delete[] string_;
-        }
-
-        // Update string_
-        string_ = newString;
+        // Update string
+        buffer_.heap = newString;
         return *this;
     }
 
     char String::PopBack()
     {
-        // Cannot pop if string is empty
-        if (curLen_ == 1)
+        if (charCount_ == 1) // cannot pop
         {
             return '\0';
         }
 
-        // If string_ is shared, create a new string, decrement refCount_
-        if (*refCount_ > 0)
-        {
-            char *newString = new char[maxLen_];
-            for (int i = 0; i < curLen_; i++)
-            {
-                newString[i] = string_[i];
-            }
-            (*refCount_)--;
-            refCount_ = new int(0);
-            string_ = newString;
-        }
-
-        // Set the char at curLen_ - 1 to null
-        char c = string_[curLen_ - 1];
-        string_[curLen_ - 1] = '\0';
-        curLen_--;
+        --charCount_;
+        // Set last char to null
+        char c = active_[charCount_ - 1];
+        active_[charCount_ - 1] = '\0';
         return c;
     }
 
@@ -294,48 +284,50 @@ namespace Custom
         return PushBack(c);
     }
 
-    char **String::Split(char delimiter) const
+    void String::Split(char delimiter, String *out, size_t *outCount) const
     {
-        // Cannot split if string is empty
-        if (curLen_ == 1)
+        if (charCount_ == 1) // nothing to split
         {
-            return nullptr;
+            out = nullptr;
+            *outCount = 0;
+            return;
         }
 
         // Calculate number of chunks
-        int chunkCount = 1;
-        for (int i = 0; i < curLen_; i++)
+        size_t chunkCount = 1;
+        for (size_t i = 0; i < charCount_; i++)
         {
-            if (string_[i] == delimiter)
+            if (active_[i] == delimiter)
             {
                 chunkCount++;
             }
         }
 
-        // Cannot split with no chunks
-        // ? Maybe return array of 1 string
-        if (chunkCount == 1)
+        if (chunkCount == 1) // nothing to split
         {
-            return nullptr;
+            out = nullptr;
+            *outCount = 0;
+            return;
         }
 
-        char **chunks = new char *[chunkCount + 1];
+        String *chunks = new String[chunkCount];
 
-        int prevIndex = 0;
-        int delIndex;
+        size_t prevIndex = 0;
+        size_t delIndex;
         for (int i = 0; i < chunkCount; i++)
         {
             // Get index of delimiter, starting from the prevIndex
             delIndex = IndexOf(delimiter, prevIndex);
 
-            int chunkSize;
-            if (delIndex > prevIndex)
+            // Length without null char
+            size_t chunkSize;
+            if (delIndex > prevIndex) // not last chunk
             {
                 chunkSize = delIndex - prevIndex;
             }
             else
             {
-                chunkSize = curLen_ - prevIndex - 1;
+                chunkSize = charCount_ - prevIndex - 1;
             }
 
             char *chunk = new char[chunkSize + 1];
@@ -343,7 +335,7 @@ namespace Custom
             // Copy string starting from prevIndex and ending at next delimiter
             for (int j = 0; j < chunkSize; j++)
             {
-                chunk[j] = string_[prevIndex + j];
+                chunk[j] = active_[prevIndex + j];
             }
 
             // Terminate the string
@@ -356,57 +348,57 @@ namespace Custom
             chunks[i] = chunk;
         }
 
-        chunks[chunkCount] = nullptr;
-        return chunks;
+        out = chunks;
+        *outCount = chunkCount;
     }
 
-    String &String::operator=(const char *str)
+    // Pass by value to create copy
+    String &String::operator=(String str)
     {
-        // TODO: Finish implementing
+        swap(*this, str);
         return *this;
+        // Let destructor handle str
     }
 
-    String &String::operator=(const String &str)
+    String::~String()
     {
-        if (this == &str)
+        // Short-circuit eval checks heap allocation first
+        // Decrement refCount then compare with 0
+        if (capacity_ > 0 && --*buffer_.refCount == 0)
         {
-            return *this;
+            delete[] buffer_.heap;
+            delete buffer_.refCount;
+            return;
         }
-
-        if (*refCount_ == 0)
-        {
-            delete[] string_;
-        }
-
-        refCount_ = str.refCount_;
-        string_ = str.string_;
-        curLen_ = str.curLen_;
-        maxLen_ = str.maxLen_;
-        (*refCount_)++;
-        return *this;
     }
 
-    bool String::operator==(const String &str) const
+    bool operator==(const String &lhs, const String &rhs)
     {
-        if (string_ == str.string_)
+        
+        if (lhs.active_ == rhs.active_) // same address
         {
             return true;
         }
 
-        if (curLen_ != str.curLen_)
+        if (lhs.charCount_ != rhs.charCount_)
         {
             return false;
         }
 
-        for (int i = 0; i < curLen_; i++)
+        for (int i = 0; i < lhs.charCount_; i++)
         {
-            if (string_[i] != str.string_[i])
+            if (lhs.active_[i] != rhs.active_[i])
             {
                 return false;
             }
         }
 
         return true;
+    }
+
+    bool operator!=(const String &lhs, const String &rhs)
+    {
+        return !(lhs == rhs);
     }
 
 }

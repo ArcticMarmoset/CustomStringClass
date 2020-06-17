@@ -1,3 +1,6 @@
-.idea
-.vscode
-cmake-build*
+# Directories
+.idea/
+.vscode/
+.vs/
+out/
+cmake-build*/
