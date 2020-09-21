@@ -1,6 +1,6 @@
 # Custom String Class
 
-An implementation of a string class to learn modern C++ concepts. Key features include application of the copy-and-swap idiom, and reference counting.
+An implementation of a string class to learn modern C++ concepts. Key features include application of the copy-and-swap idiom, move semantics, and reference counting.
 
 Currently working:
 - Constructor
